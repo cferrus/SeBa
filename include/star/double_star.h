@@ -69,9 +69,13 @@ class double_star : public star
         double_init initial;
 
     private:
+        static bool suppress_output;
 
     public:
-	
+
+        static void set_suppress_output(bool val) { suppress_output = val; }
+        static bool get_suppress_output()          { return suppress_output; }
+
         double_star(node*);
 
         ~double_star() {}
@@ -199,6 +203,7 @@ class double_star : public star
 
 	void dump(ostream &, bool brief = true);
 	void dump(char*, bool);
+	void dump_unconditional(char*, bool);
         void put_element();
         void print_status();
         void print_roche();

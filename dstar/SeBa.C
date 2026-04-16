@@ -158,10 +158,10 @@ local bool  evolve_binary(dyn * bi,
   
   //char SeBa_outfile[] = "SeBa.data";
   //char SeBa_outfile[] = SeBa_Filename();
-  ds->dump(SeBa_outfile, true);
+  ds->dump_unconditional(SeBa_outfile, true);
 
   if (!bi->is_root() &&
-      bi->get_parent()->is_root()) 
+      bi->get_parent()->is_root())
 
     do {
 
@@ -174,7 +174,7 @@ local bool  evolve_binary(dyn * bi,
       ds->evolve_element(time);
 
       if (stop_at_merger_or_disruption &&
-	  (ds->get_bin_type() == Merged || 
+	  (ds->get_bin_type() == Merged ||
 	   ds->get_bin_type() == Disrupted))
 	return false;
       if (stop_at_remnant_formation &&
@@ -184,7 +184,7 @@ local bool  evolve_binary(dyn * bi,
     }
     while (time<end_time);
 
-  ds->dump(SeBa_outfile, true);
+  ds->dump_unconditional(SeBa_outfile, true);
   ds->set_star_story(NULL);
     
   rmtree(bi, false);
@@ -376,6 +376,8 @@ int main(int argc, char ** argv) {
 
     actual_seed = srandinter(input_seed);
     sprintf(seedlog, "       random number generator seed = %d",actual_seed);
+
+    double_star::set_suppress_output(true);
 
     ifstream infile(input_filename, ios::in);
     if(I_flag) {
