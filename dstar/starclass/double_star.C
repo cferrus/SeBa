@@ -318,54 +318,18 @@ void double_star::dump(ostream & s, bool brief) {
     star* stp = get_initial_primary();
     star* sts = get_initial_secondary();
 
-    real m1 = stp->get_total_mass();
-    real m2 = sts->get_total_mass();
-
-    real primary_roche_lobe, secondary_roche_lobe;
-    if (bin_type==Merged || bin_type==Disrupted) {
-	primary_roche_lobe   = 2 * stp->get_effective_radius();
-	secondary_roche_lobe = 2 * sts->get_effective_radius();
-    }
-    else {
-	primary_roche_lobe   = roche_radius(semi, m1, m2);
-	secondary_roche_lobe = roche_radius(semi, m2, m1);
-
-    }
-
-    //    if(identity>0)
-    //	s << identity << " ";
-    //    else
-    //	s << get_node()->format_label() << " ";
-
+    // cols: 1=identity, 2=bin_type, 4=time, 5=semi, 6=ecc,
+    //       7=primary_id, 8=primary_type, 13=secondary_id, 14=secondary_type
     s << identity << " "
       << bin_type << " "
-      << current_mass_transfer_type << " "
       << binary_age << " "
       << semi << " "
-      << eccentricity << "     ";
-
-
-
-	s << stp->get_identity() << " "
-	  << stp->get_element_type() << " "
-	  << m1 << " "
-	  << stp->get_effective_radius() << " "
-	  << log10(stp->temperature()) << " "
-	  << stp->get_core_mass() << " "
-//      << stp->get_effective_radius()/primary_roche_lobe  << "    "
-//      << primary_roche_lobe << "  "
-//      << stp->get_radius()<< "      "
-
-	  << sts->get_identity() << " "
-	  << sts->get_element_type() << " "
-	  << m2 << " "
-	  << sts->get_effective_radius() << " "
-	  << log10(sts->temperature()) << " "
-	  << sts->get_core_mass()
-//      << " " << sts->get_effective_radius()/secondary_roche_lobe
-//      << secondary_roche_lobe << "  "
-//      << sts->get_radius()
-	  << endl;
+      << eccentricity << " "
+      << stp->get_identity() << " "
+      << stp->get_element_type() << " "
+      << sts->get_identity() << " "
+      << sts->get_element_type()
+      << endl;
 
 
       //get_initial_primary()->dump(s, brief);
