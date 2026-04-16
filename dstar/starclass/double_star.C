@@ -318,17 +318,17 @@ void double_star::dump(ostream & s, bool brief) {
     star* stp = get_initial_primary();
     star* sts = get_initial_secondary();
 
-    // cols: 1=identity, 2=bin_type, 4=time, 5=semi, 6=ecc,
-    //       7=primary_id, 8=primary_type, 13=secondary_id, 14=secondary_type
+    // cols: 1=identity, 2=bin_type, 3=time, 4=semi, 5=ecc,
+    //       6=primary_type, 7=primary_mass, 8=secondary_type, 9=secondary_mass
     s << identity << " "
       << bin_type << " "
       << binary_age << " "
       << semi << " "
       << eccentricity << " "
-      << stp->get_identity() << " "
       << stp->get_element_type() << " "
-      << sts->get_identity() << " "
-      << sts->get_element_type()
+      << stp->get_total_mass() << " "
+      << sts->get_element_type() << " "
+      << sts->get_total_mass()
       << endl;
 
 

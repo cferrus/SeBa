@@ -50,10 +50,10 @@ The large benchmark input file lives at `/Users/melz/Work_Program/Data/SeBa_inpu
 | 3 | time (Myr) |
 | 4 | semi-major axis (Rsun) |
 | 5 | eccentricity |
-| 6 | primary identity |
-| 7 | primary stellar type (integer) |
-| 8 | secondary identity |
-| 9 | secondary stellar type (integer) |
+| 6 | primary stellar type (integer) |
+| 7 | primary mass (Msun) |
+| 8 | secondary stellar type (integer) |
+| 9 | secondary mass (Msun) |
 
 Stellar type integers: 3=Main_Sequence, 5=Hertzsprung_Gap, 6=Sub_Giant, 7=Horizontal_Branch, 8=Super_Giant, 10=Helium_Star, 11=Helium_Giant, 12–14=White_Dwarf variants, 18=Neutron_Star, 19=Black_Hole.
 
