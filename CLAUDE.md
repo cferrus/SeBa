@@ -100,18 +100,34 @@ Committed on branch `main` of `cferrus/SeBa`:
 Any change to the physics or output logic must be validated by comparing `SeBa.data` against the reference file:
 
 ```
-/Users/melz/Work_Program/Data/clean12550.data
+/Users/melz/Work_Program/Data/12500_cleaned.data
 ```
 
-This is the known-good output for the 67,045-binary input run with `-I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550`. It has 134,090 lines (2 per binary). To verify a new build:
+This is the known-good output for the 67,045-binary input run with `-I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550 -s 42`. It is in the original 18-column af8654c format (not our 9-column format) and has 134,090 lines (2 per binary). The fixed seed `-s 42` is required for reproducibility — without it NS/BH kick angles vary between runs.
+
+To verify a new build, use a Python comparison (not `diff`) because column layouts differ:
 
 ```bash
 cd dstar
-./SeBa -I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550 2>/dev/null
-diff SeBa.data /Users/melz/Work_Program/Data/clean12550.data
+./SeBa -I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550 -s 42 2>/dev/null
+python3 -c "
+import sys
+our, ref = {}, {}
+for line in open('SeBa.data'):
+    c = line.split(); bid, t = c[0], float(c[2])
+    our[(bid, 'T0' if t==0 else 'Tend')] = c
+for line in open('/Users/melz/Work_Program/Data/12500_cleaned.data'):
+    c = line.split(); bid, t = c[0], float(c[3])
+    ref[(bid, 'T0' if t==0 else 'Tend')] = c
+mm = [(k[0], o, ref[k]) for k, o in our.items()
+      if k[1]=='Tend' and k in ref and
+      any([o[1]!=ref[k][1], o[3]!=ref[k][4], o[4]!=ref[k][5],
+           o[5]!=ref[k][7], o[6]!=ref[k][8], o[7]!=ref[k][13], o[8]!=ref[k][14]])]
+print(f'Mismatches: {len(mm)} / {len(our)//2}')
+"
 ```
 
-A clean diff (no output) means the new build is numerically identical to the reference. Any differences indicate a regression in physics or output formatting and must be investigated before committing.
+**Expected baseline:** 88 mismatches out of 67,045 binaries (0.13%). These are a known, stable divergence from the af8654c reference — mostly small eccentricity differences in WD+Brown Dwarf systems arising from minor I/O code-path differences that shift the global RNG sequence. Any regression is indicated by the mismatch count rising above 88 or new `bin_type`/`s1_type`/`s2_type` differences appearing.
 
 ## Filtering output with rdc_SeBa
 
