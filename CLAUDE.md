@@ -95,6 +95,24 @@ Committed on branch `main` of `cferrus/SeBa`:
 | User time | ~247s | ~230s | -7% |
 | Sys time | ~14.4s | ~7.5s | -48% |
 
+## Accuracy benchmark
+
+Any change to the physics or output logic must be validated by comparing `SeBa.data` against the reference file:
+
+```
+/Users/melz/Work_Program/Data/clean12550.data
+```
+
+This is the known-good output for the 67,045-binary input run with `-I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550`. It has 134,090 lines (2 per binary). To verify a new build:
+
+```bash
+cd dstar
+./SeBa -I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550 2>/dev/null
+diff SeBa.data /Users/melz/Work_Program/Data/clean12550.data
+```
+
+A clean diff (no output) means the new build is numerically identical to the reference. Any differences indicate a regression in physics or output formatting and must be investigated before committing.
+
 ## Filtering output with rdc_SeBa
 
 `rdc/rdc_SeBa` filters `SeBa.data` by stellar type and binary state. Must be built as part of the top-level `make`:
