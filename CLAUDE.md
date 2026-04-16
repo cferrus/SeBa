@@ -39,6 +39,16 @@ Three modes:
 
 The large benchmark input file lives at `/Users/melz/Work_Program/Data/SeBa_input_T_12550.txt` (67,045 binaries). Always use the full absolute path — relative paths cause a silent infinite loop in `read_binary_params` if the file isn't found.
 
+### Verbose flag
+
+By default SeBa runs silently — no terminal output. Add `-V` to enable the full stellar evolution history on `stderr`:
+
+```bash
+./SeBa -V -M 2 -m 1 -e 0.2 -a 200 -T 13500 -z 0.001
+```
+
+This prints the run parameters (seed, CE/kick settings, distribution functions) and every stellar phase transition for each component (e.g. `1a main_sequence_to_hertzsprung_gap_at_time = 789.67 Myr`). Omit `-V` for batch/pipeline runs.
+
 ## Output format
 
 `SeBa.data` is written with **9 columns only** (trimmed from the original 18). Each binary produces exactly 2 lines: T=0 (initial state) and T=end (final state). No intermediate steps are written.
@@ -59,17 +69,30 @@ Stellar type integers: 3=Main_Sequence, 5=Hertzsprung_Gap, 6=Sub_Giant, 7=Horizo
 
 ## Output suppression mechanism
 
-All intermediate file I/O is suppressed via a static flag on `double_star`:
+There are two independent suppression flags, one per class:
 
-- `double_star::suppress_output` — static bool, set to `true` in `main()` unconditionally
-- `dump(char*, bool)` — returns immediately if `suppress_output` is true; catches all writes from `sstar/` stellar-type classes (neutron_star, black_hole, etc.) that call `get_binary()->dump()`
+### `double_star::suppress_output`
+- Static bool, set to `true` in `main()` **unconditionally** (never toggled by `-V`).
+- `dump(char*, bool)` — returns immediately if true; catches all writes from `sstar/` stellar-type classes (neutron_star, black_hole, etc.) that call `get_binary()->dump()`
 - `dump_unconditional(char*, bool)` — bypasses the flag; was used for T=0 and T=end writes before the ostream refactor
 - `dump(ostream&, bool)` — the actual formatter; no suppression check (suppression is at the char* entry point)
 - `binev.data` is never created (all writes to it are suppressed)
+- Unguarded `cerr` diagnostic messages (spiral-in, common envelope, Roche contact events) in `double_star.C` are also gated on `!suppress_output`
 
-In `main()`, `SeBa.data` is opened **once** as an `ofstream` and passed as `ostream&` to `evolve_binary()`, which calls `ds->dump(outstream, true)` directly. This eliminates ~134K open/close syscalls for a 67K-binary run.
+In `main()`, `SeBa.data` is opened **once** as an `ofstream` and passed as `ostream&` to `evolve_binary()`, which calls `ds->dump(outstream, true)` directly. This eliminates ~134K open/close syscalls for a 67K-binary run. **`double_star::suppress_output` must stay `true` or those old per-binary `dump("SeBa.data", true)` calls would re-activate, duplicating output and destroying the single-open performance gain.**
 
-Unguarded `cerr` diagnostic messages (spiral-in, common envelope, Roche contact events) are also gated on `!suppress_output`.
+### `single_star::suppress_output`
+- Static bool, defined in `sstar/starclass/single_star.C`, declared in `include/star/single_star.h`.
+- Set to `!verbose` in `main()` — `true` by default, `false` when `-V` is passed.
+- Gates the `cerr` block in `single_star::star_transformation_story()` (`sstar/io/single_star_io.C`), which prints per-component phase transitions like `1a main_sequence_to_hertzsprung_gap_at_time = 789.67 Myr`.
+
+### Summary
+
+| Flag | Default | With `-V` | Controls |
+|------|---------|-----------|----------|
+| `double_star::suppress_output` | `true` | `true` | File writes + CE/Roche `cerr` events |
+| `single_star::suppress_output` | `true` | `false` | Phase-transition `cerr` in `star_transformation_story()` |
+| Seed / param / distribution `cerr` in `main()` | suppressed | shown | Gated directly on `verbose` bool |
 
 ## Performance optimizations applied
 

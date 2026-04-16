@@ -201,6 +201,7 @@ int main(int argc, char ** argv) {
     bool U_flag = false;
     bool G_flag = false;
 
+    bool verbose = false;
     bool stop_at_merger_or_disruption = false;
     bool stop_at_remnant_formation = false;
     bool random_initialization = false;
@@ -264,10 +265,12 @@ int main(int argc, char ** argv) {
 
     extern char *poptarg;
     int c;
-    const char *param_string = "n:N:RDSM:m:x:F:f:A:a:y:G:g:E:e:v:U:u:Q:q:T:t:I:O:w:P:p:n:s:z:C:c:";
+    const char *param_string = "n:N:VRDSM:m:x:F:f:A:a:y:G:g:E:e:v:U:u:Q:q:T:t:I:O:w:P:p:n:s:z:C:c:";
 
     while ((c = pgetopt(argc, argv, param_string)) != -1)
 	switch(c) {
+            case 'V': verbose = true;
+		      break;
             case 'R': random_initialization = true;
 		      break;
             case 'D': stop_at_merger_or_disruption = true;
@@ -346,7 +349,7 @@ int main(int argc, char ** argv) {
 	}
 
     int actual_seed = srandinter(input_seed);
-    cerr << "random number generator seed = " << actual_seed << endl;
+    if (verbose) cerr << "random number generator seed = " << actual_seed << endl;
     sprintf(paramlog,
 	   "   alpha  = %3.1f\n   lambda = %3.1f\n   beta   = %3.1f\n   gamma  = %4.2f\n   CE_method = %d\n   Jloss_method = %d \n",
 	    cnsts.parameters(common_envelope_efficiency),
@@ -376,12 +379,13 @@ int main(int argc, char ** argv) {
     sprintf(seedlog, "       random number generator seed = %d",actual_seed);
 
     double_star::set_suppress_output(true);
+    single_star::set_suppress_output(!verbose);
 
     ifstream infile(input_filename, ios::in);
     if(I_flag) {
       if (!infile) cerr << "error: couldn't read file "
 	                << input_filename <<endl;
-	cerr << "Reading input from file "<< input_filename <<endl;
+      if (verbose) cerr << "Reading input from file "<< input_filename <<endl;
     }
 
     ofstream outfile(output_filename, ios::out|ios::trunc);
@@ -398,9 +402,9 @@ int main(int argc, char ** argv) {
     root->log_history(argc, argv);
     root->log_comment(seedlog);
     root->log_comment(paramlog);
-    root->print_log_story(cerr);
+    if (verbose) root->print_log_story(cerr);
 
-    print_initial_binary_distributions(m_min, m_max, mf, m_exp,
+    if (verbose) print_initial_binary_distributions(m_min, m_max, mf, m_exp,
 				       q_min, q_max, qf, q_exp,
 				       a_min, a_max, af, a_exp,
 				       e_min, e_max, ef, e_exp);

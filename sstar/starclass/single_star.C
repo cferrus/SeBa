@@ -12,6 +12,8 @@
 
 #define REPORT_MASS_TRANSFER_TIMESCALE false
 
+bool single_star::suppress_output = false;
+
 single_star * new_single_star(stellar_type type,	// All defaults are
 			      int  id,			// now specified in
 			      real z,

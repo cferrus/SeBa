@@ -74,7 +74,11 @@ class  single_star : public star
         star_hist previous;
 
     public:
-   
+
+        static bool suppress_output;
+        static void set_suppress_output(bool val) { suppress_output = val; }
+        static bool get_suppress_output()          { return suppress_output; }
+
 	single_star(node*);
         single_star(single_star&);
         ~single_star()	{
