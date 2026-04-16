@@ -156,8 +156,8 @@ real double_star::roche_radius(star * str) {
 
   real mr = str->get_total_mass()
     / str->get_companion()->get_total_mass();
-  real q1_3 = pow(mr, cnsts.mathematics(one_third));
-  real q2_3 = pow(q1_3, 2);                  //pow(mr, TWO_THIRD);
+  real q1_3 = cbrt(mr);
+  real q2_3 = q1_3*q1_3;
 
   real Rl = semi*0.49*q2_3/(0.6*q2_3 + log(1 + q1_3));
   return Rl;
@@ -166,8 +166,8 @@ real double_star::roche_radius(star * str) {
 real double_star::roche_radius(const real a, const real m1, const real m2) {
 
   real q = m1/m2;
-  real q1_3 = pow(q, cnsts.mathematics(one_third));
-  real q2_3 = pow(q1_3, 2);   //pow(mr, TWO_THIRD);
+  real q1_3 = cbrt(q);
+  real q2_3 = q1_3*q1_3;
 
   return a*0.49*q2_3/(0.6*q2_3 + log(1 + q1_3));
        }
@@ -658,16 +658,18 @@ void double_star::semi_detached(star* donor,
 //	Donor should lose mass while the accretor should accrete.
 
   if (!stable(donor)) {
-    cerr << "Spiral-in: Darwin Riemann instability"<<endl;
-    cerr << "semi_detached not stable => ::common_envelope" << endl;
-
+    if (!suppress_output) {
+      cerr << "Spiral-in: Darwin Riemann instability"<<endl;
+      cerr << "semi_detached not stable => ::common_envelope" << endl;
+    }
     //    dynamic_mass_transfer();
     // (GN+SilT Mar  2 2011)
     current_mass_transfer_type = Darwin;
     tidal_instability();
   }
   else if (get_current_mass_transfer_type()==Dynamic) {
-    cerr << "dynamic mass transfer => ::dynamic_mass_transfer" << endl;
+    if (!suppress_output)
+      cerr << "dynamic mass transfer => ::dynamic_mass_transfer" << endl;
 
     dynamic_mass_transfer();
 // in common_envelope dynamic_mass_trasfer is called
@@ -1317,9 +1319,7 @@ void double_star::recursive_binary_evolution(real dt,
 	    if (REPORT_RECURSIVE_EVOLUTION)
 	      cerr << "\tFirst contact" << endl;
 
-	    cerr << "First Roche-lobe contact for: ";
-	    put_state();
-	    cerr << endl;
+	    if (!suppress_output) { cerr << "First Roche-lobe contact for: "; put_state(); cerr << endl; }
 	  // (SilT Nov 25 2012)
 	  // Goes wrong when first stable mass transfer. Need to set in ::contact_binary...
 	  //dump("SeBa.data", true);
@@ -1368,9 +1368,7 @@ void double_star::recursive_binary_evolution(real dt,
 
 	    donor->first_roche_lobe_contact_story(accretor->get_element_type());
 
-	    cerr << "First Roche-lobe contact for: ";
-        put_state();
-	    cerr << endl;
+	    if (!suppress_output) { cerr << "First Roche-lobe contact for: "; put_state(); cerr << endl; }
 
 	    // (GN+SilT Mar  2 2011)
 	    // do dump later, so that we know exactly what type of MT
@@ -2830,12 +2828,13 @@ real double_star::gwr_angular_momentum_loss(const real m_prim,
 
   if(sma*sqrt(1-ecc*ecc)/sqrt(m_tot)<=6.) {
 
-    real c_gwr = -32*pow(cnsts.parameters(solar_mass)*
+    static const real c_gwr = -32*pow(cnsts.parameters(solar_mass)*
 			cnsts.physics(G), 3)
                / (5*pow(cnsts.physics(C), 5)*
 		 pow(cnsts.parameters(solar_radius), 4));
-   real ecc_factor = (1+7./8.*ecc*ecc)/pow(1-ecc*ecc, 2.5);
-    J_gwr = c_gwr*m_prim*m_sec*m_tot/pow(sma, 4)* ecc_factor;
+    real ecc_factor = (1+7./8.*ecc*ecc)/pow(1-ecc*ecc, 2.5);
+    real sma2 = sma*sma;
+    J_gwr = c_gwr*m_prim*m_sec*m_tot/(sma2*sma2)* ecc_factor;
 
   }
 
@@ -2845,24 +2844,26 @@ real double_star::gwr_angular_momentum_loss(const real m_prim,
 // Rappaport, Verbunt & Joss, 1983
 real double_star::mb_angular_momentum_loss() {
 
-  real c_mb = -3.8e-30*cnsts.parameters(solar_mass)*cnsts.physics(G)
+  static const real c_mb = -3.8e-30*cnsts.parameters(solar_mass)*cnsts.physics(G)
             /          cnsts.parameters(solar_radius);
 
   real J_mb_prim = 0;
-  if (get_primary()->magnetic() && eccentricity<=
-      cnsts.parameters(corotation_eccentricity))
-    J_mb_prim = c_mb * pow(get_total_mass(), 2)
-              * pow(get_primary()->get_effective_radius(),
-	            cnsts.parameters(magnetic_braking_exponent))
-              / (get_secondary()->get_total_mass()*pow(semi, 5));
-
   real J_mb_sec = 0;
-  if (get_secondary()->magnetic() && eccentricity<=
-      cnsts.parameters(corotation_eccentricity))
-        J_mb_sec = c_mb * pow(get_total_mass(), 2)
-                 * pow(get_secondary()->get_effective_radius(),
-		       cnsts.parameters(magnetic_braking_exponent))
-                 / (get_primary()->get_total_mass()*pow(semi, 5));
+  if (eccentricity <= cnsts.parameters(corotation_eccentricity)) {
+    real m_tot = get_total_mass();
+    real m_tot2 = m_tot*m_tot;
+    real semi2 = semi*semi;
+    real semi5 = semi2*semi2*semi;
+    real mb_exp = cnsts.parameters(magnetic_braking_exponent);
+    if (get_primary()->magnetic())
+      J_mb_prim = c_mb * m_tot2
+                * pow(get_primary()->get_effective_radius(), mb_exp)
+                / (get_secondary()->get_total_mass()*semi5);
+    if (get_secondary()->magnetic())
+      J_mb_sec = c_mb * m_tot2
+               * pow(get_secondary()->get_effective_radius(), mb_exp)
+               / (get_primary()->get_total_mass()*semi5);
+  }
 
   real J_mb=(J_mb_prim+J_mb_sec)*cnsts.physics(Myear);
 

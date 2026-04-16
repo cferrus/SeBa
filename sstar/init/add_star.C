@@ -113,7 +113,7 @@ void  addstar(node * b, real t_current, stellar_type type, real z,int id,
 	// Jan 22025 code:
 	// stellar_type local_type = type;
 	// Febr 2025 code:
-	cout <<"stellar type in add_star:"<< type << endl;
+	//cout <<"stellar type in add_star:"<< type << endl;
 	stellar_type local_type = type;
 	if (type == Main_Sequence) {
 	  local_type = NAS;

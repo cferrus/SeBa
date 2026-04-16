@@ -146,19 +146,17 @@ local bool  evolve_binary(dyn * bi,
                           real start_time, real end_time,
 			  bool stop_at_merger_or_disruption,
 			  bool stop_at_remnant_formation,
-			  char* SeBa_outfile) { 
+			  ostream& outstream) {
 
 
-  double_star* ds = dynamic_cast(double_star*, 
+  double_star* ds = dynamic_cast(double_star*,
 				 bi->get_starbase());
-  
+
   //		Setup star from input data.
   real dt, time=start_time;
   ds->evolve_element(time);
-  
-  //char SeBa_outfile[] = "SeBa.data";
-  //char SeBa_outfile[] = SeBa_Filename();
-  ds->dump_unconditional(SeBa_outfile, true);
+
+  ds->dump(outstream, true);
 
   if (!bi->is_root() &&
       bi->get_parent()->is_root())
@@ -184,9 +182,9 @@ local bool  evolve_binary(dyn * bi,
     }
     while (time<end_time);
 
-  ds->dump_unconditional(SeBa_outfile, true);
+  ds->dump(outstream, true);
   ds->set_star_story(NULL);
-    
+
   rmtree(bi, false);
   return true;
 
@@ -386,6 +384,12 @@ int main(int argc, char ** argv) {
 	cerr << "Reading input from file "<< input_filename <<endl;
     }
 
+    ofstream outfile(output_filename, ios::out|ios::trunc);
+    if (!outfile) {
+      cerr << "error: couldn't open output file " << output_filename << endl;
+      return 1;
+    }
+
     dyn *root, *the_binary;
     double_star *ds;
 
@@ -481,8 +485,8 @@ int main(int argc, char ** argv) {
       //      node *b      = root->get_oldest_daughter();
       //      starbase *s  = b->get_starbase();
       //      star *st     = dynamic_cast(star*, b->get_starbase());
-      bool reached_end = evolve_binary(the_binary, start_time, end_time, 
-		    stop_at_merger_or_disruption, stop_at_remnant_formation, output_filename);
+      bool reached_end = evolve_binary(the_binary, start_time, end_time,
+		    stop_at_merger_or_disruption, stop_at_remnant_formation, outfile);
 
       //cerr << ds << endl;
 
