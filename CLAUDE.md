@@ -128,30 +128,32 @@ The cluster run is driven by `Data/run.sh`, which calls `SeBaCluster` (the SeBa 
 ### Prerequisites
 
 - `SeBaCluster` binary must be present in the `Data/` directory (copy or symlink `dstar/SeBa`)
-- GNU `parallel` must be installed (`which parallel`)
+- Python 3 with `psutil` installed (`pip install psutil`)
 - Input files (`SeBa_input_T_*.txt`) must be present in `Data/`
 
 ### Running in parallel
 
 ```bash
 cd Data/
-./run_parallel.sh 32      # replace 32 with your core count
+python3 run_seba.py
 ```
 
-`run_parallel.sh` does three things:
-1. Rewrites each job's `-O trial.data` to a unique `-O trial_N.dat` (avoids truncation conflicts)
-2. Feeds all jobs through `parallel -j N`
-3. Merges all `trial_N.dat` files into `trial.data` and removes the per-job files
+`run_seba.py` handles everything:
+1. Reads `run.sh` and rewrites each job's `-O trial.data` to a unique `-O trial_{i}.data`
+2. Runs all jobs in parallel using `ThreadPoolExecutor`, with worker count dynamically adjusted every 3 minutes based on live CPU load (using `psutil`)
+3. Merges all `trial_*.data` files into `trial.data` and removes the per-job files
 
-If GNU `parallel` is not available, fall back to `xargs -P`:
+Worker count is bounded between `MIN_WORKERS=4` and `MAX_WORKERS=54`; edit those constants at the top of the script to match your machine.
+
+If `psutil` is unavailable, `run_parallel.sh` provides a GNU `parallel` fallback:
 
 ```bash
-USE_XARGS=1 ./run_parallel.sh 32
+./run_parallel.sh 32    # replace 32 with your core count
 ```
 
 ### Why not the original run.sh directly?
 
-`run.sh` passes `-O trial.data` to every job. `SeBa.C` opens that file with `ios::trunc`, which **truncates and overwrites** on each invocation. Running jobs in parallel would cause every process to destroy each other's output. Running sequentially would leave only the last job's results. `run_parallel.sh` fixes both.
+`run.sh` passes `-O trial.data` to every job. `SeBa.C` opens that file with `ios::trunc`, which **truncates and overwrites** on each invocation. Running jobs in parallel would cause every process to destroy each other's output. Running sequentially would leave only the last job's results. Both `run_seba.py` and `run_parallel.sh` fix this by assigning unique output filenames and merging at the end.
 
 ### Copying the binary to Data/
 
