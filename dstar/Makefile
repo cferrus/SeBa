@@ -10,7 +10,17 @@ LDLIBS	  += \
 	     -lm
 
 CFLAGS    += -O
-CXXFLAGS  += -O
+# OpenMP: enabled on Linux with GCC (-fopenmp).
+# Apple Clang on macOS does not support -fopenmp without libomp;
+# the binary falls back to single-threaded automatically via #ifdef _OPENMP guards.
+# On the cluster (Linux/GCC) this gives near-linear speedup with core count.
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+    CXXFLAGS  += -O -fopenmp
+    LDLIBS    += -fopenmp
+else
+    CXXFLAGS  += -O
+endif
 
 EXE	= SeBa Normalisation
 DIRS	= init io starclass stardyn util

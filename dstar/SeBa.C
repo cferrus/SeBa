@@ -102,11 +102,16 @@
 //	version 4.0	Simon Portegies Zwart, Amsterdam, February 2003
 //
 
-#include "dyn.h" 
+#include "dyn.h"
 #include "double_star.h"
 #include "main_sequence.h"
 //#include "dstar_to_dyn.h"
 //#include "seba.h"
+#include <sstream>
+#include <vector>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 
 #ifdef TOOLBOX
@@ -381,6 +386,9 @@ int main(int argc, char ** argv) {
     double_star::set_suppress_output(true);
     single_star::set_suppress_output(!verbose);
 
+    static ofstream null_stream("/dev/null");
+    if (!verbose) cerr.rdbuf(null_stream.rdbuf());
+
     ifstream infile(input_filename, ios::in);
     if(I_flag) {
       if (!infile) cerr << "error: couldn't read file "
@@ -394,145 +402,115 @@ int main(int argc, char ** argv) {
       return 1;
     }
 
-    dyn *root, *the_binary;
-    double_star *ds;
-
-    // Create flat tree 
-    root = mkdyn(1);
-    root->log_history(argc, argv);
-    root->log_comment(seedlog);
-    root->log_comment(paramlog);
-    if (verbose) root->print_log_story(cerr);
+    // Create a root for run-level logging (separate from per-binary trees).
+    dyn *log_root = mkdyn(1);
+    log_root->log_history(argc, argv);
+    log_root->log_comment(seedlog);
+    log_root->log_comment(paramlog);
+    if (verbose) log_root->print_log_story(cerr);
 
     if (verbose) print_initial_binary_distributions(m_min, m_max, mf, m_exp,
 				       q_min, q_max, qf, q_exp,
 				       a_min, a_max, af, a_exp,
 				       e_min, e_max, ef, e_exp);
 
-    for (int i=0; i<n; i++) {
-
-      if(I_flag) {
-	if(read_binary_params(infile, m_prim, m_sec, sma, ecc, z)) 
-	  n=i+2;
-	else
-	  break;
-      }
-      else if (random_initialization) {
-    	if (metal < 0.0001 || metal > 0.03){
-                cerr<<"Parameters are not within valid range"<<endl;    
-                cerr<<"0.0001 <= z <= 0.03"<<endl;
-                return 0; 
-    	   }    	   
-    	   
-        z = metal;
-
-	mkrandom_binary(m_min, m_max, mf, m_exp,
-			q_min, q_max, qf, q_exp,
-			a_min, a_max, af, a_exp,
-			e_min, e_max, ef, e_exp,
-    		m_prim, m_sec, sma, ecc, z);
-        	while (m_prim>100.0 || m_sec>100.0 || ecc<0 || ecc>1){   
-            	mkrandom_binary(m_min, m_max, mf, m_exp,
-            			q_min, q_max, qf, q_exp,
-            			a_min, a_max, af, a_exp,
-            			e_min, e_max, ef, e_exp,
-                		m_prim, m_sec, sma, ecc, z);
-        	}
-      }		
-      else {        
-           if (m_max<=100.0 && m_min<=100.0 && e_min >= 0 && e_min <= 1 && metal >= 0.0001 && metal <= 0.03){
-            	m_prim = m_max;
-            	m_sec  = m_min;
-            	sma    = a_min;
-            	ecc    = e_min;
-            	n = 1;
-            	z = metal;
-            }
-            else{
-                cerr<<"Parameters are not within valid range"<<endl;    
-                cerr<<"0.1 <= M <= 100 "<<endl;
-                cerr<<"0.0001 <= z <= 0.03"<<endl;
-                cerr<<" 0 <= e <= 1"<<endl;
-                return 0;
-            }
-      }
-
-//      PRC(m_prim);PRC(m_sec/m_prim);PRC(sma);PRL(ecc);
-
-      // Create flat tree
-//      rmtree(root, false);
-      root = mkdyn(1);
-      root->set_mass(1);
-      root->get_starbase()->set_stellar_evolution_scaling(m_prim, r_hm, t_hc);
-      the_binary = root->get_oldest_daughter();
-      add_secondary(the_binary, m_sec/m_prim);
-      addstar(root, start_time, primary_type, z, 0, false, secondary_type);
-//      root->get_starbase()->set_seba_counters(new_seba_counters);
-
-//      pp(root, cerr);
-//      cerr << endl;
-
-      ds = new_double_star(the_binary, sma, ecc, start_time, 
-			   i + n_init, bin_type);
-
-//            PRL(((star*)the_binary->get_oldest_daughter()->get_starbase())->get_companion());
-
-//            PRL(the_binary);
-//      PRL(ds);
-
-//      ds->dump(cerr, false);
-
-      ds->set_use_hdyn(false);
-      ds->get_primary()->set_identity(0);
-      ds->get_secondary()->set_identity(1);
-
-      //      node *b      = root->get_oldest_daughter();
-      //      starbase *s  = b->get_starbase();
-      //      star *st     = dynamic_cast(star*, b->get_starbase());
-      bool reached_end = evolve_binary(the_binary, start_time, end_time,
-		    stop_at_merger_or_disruption, stop_at_remnant_formation, outfile);
-
-      //cerr << ds << endl;
-
-      //ds->dump(cerr, false);
-
-      if (!reached_end) {
-
-//	  the_binary->get_starbase()->dump(cerr, false);
-	  the_binary->get_starbase()->set_star_story(NULL);
-    
-	  rmtree(the_binary, false);
-      }
-
-	  //cerr << the_binary << endl;
-
-      //put_node(root);
-      //cerr << root << endl;
-      delete the_binary;
-      delete root;
-
-
-
-
-//      ((star*)the_binary->get_starbase())->set_seba_counters(new_seba_counters);
-
-
-      //rmtree(root, false);
-
-      //delete root->get_starbase()->get_seba_counters();
-
-      //      delete ds->get_primary();
-      //      delete ds->get_secondary();
-      //      delete ds;
-      //      delete root->get_oldest_daughter()->get_younger_sister();
-	
+    // Pre-read all binary parameters from input file so the evolution
+    // loop can be parallelised — each binary is fully independent.
+    struct BinaryInput { real m_prim, m_sec, sma, ecc, z; };
+    std::vector<BinaryInput> binary_inputs;
+    if (I_flag) {
+        BinaryInput bp;
+        while (read_binary_params(infile, bp.m_prim, bp.m_sec, bp.sma, bp.ecc, bp.z))
+            binary_inputs.push_back(bp);
+        n = (int)binary_inputs.size();
+    } else if (random_initialization) {
+        if (metal < 0.0001 || metal > 0.03) {
+            cerr << "Parameters are not within valid range" << endl;
+            cerr << "0.0001 <= z <= 0.03" << endl;
+            return 0;
+        }
+    } else {
+        if (!(m_max<=100.0 && m_min<=100.0 && e_min>=0 && e_min<=1
+              && metal>=0.0001 && metal<=0.03)) {
+            cerr << "Parameters are not within valid range" << endl;
+            cerr << "0.1 <= M <= 100 " << endl;
+            cerr << "0.0001 <= z <= 0.03" << endl;
+            cerr << " 0 <= e <= 1" << endl;
+            return 0;
+        }
+        n = 1;
     }
 
-    root->log_history(argc, argv);
-    root->log_comment(seedlog);
-    root->log_comment(paramlog);
-    root->print_log_story(cout);
-//    rmtree(root, false);
+#pragma omp parallel for schedule(dynamic, 1)
+    for (int i = 0; i < n; i++) {
+
+      real m_prim_i, m_sec_i, sma_i, ecc_i, z_i;
+
+      if (I_flag) {
+          m_prim_i = binary_inputs[i].m_prim;
+          m_sec_i  = binary_inputs[i].m_sec;
+          sma_i    = binary_inputs[i].sma;
+          ecc_i    = binary_inputs[i].ecc;
+          z_i      = binary_inputs[i].z;
+      } else if (random_initialization) {
+          // RNG is global state: serialise generation, parallelise evolution.
+          z_i = metal;
+#pragma omp critical(rng)
+          {
+              mkrandom_binary(m_min, m_max, mf, m_exp,
+                              q_min, q_max, qf, q_exp,
+                              a_min, a_max, af, a_exp,
+                              e_min, e_max, ef, e_exp,
+                              m_prim_i, m_sec_i, sma_i, ecc_i, z_i);
+              while (m_prim_i>100.0 || m_sec_i>100.0 || ecc_i<0 || ecc_i>1)
+                  mkrandom_binary(m_min, m_max, mf, m_exp,
+                                  q_min, q_max, qf, q_exp,
+                                  a_min, a_max, af, a_exp,
+                                  e_min, e_max, ef, e_exp,
+                                  m_prim_i, m_sec_i, sma_i, ecc_i, z_i);
+          }
+      } else {
+          m_prim_i = m_max; m_sec_i = m_min;
+          sma_i = a_min;    ecc_i = e_min; z_i = metal;
+      }
+
+      // All tree objects are thread-local — no sharing between iterations.
+      dyn *root_i = mkdyn(1);
+      root_i->set_mass(1);
+      root_i->get_starbase()->set_stellar_evolution_scaling(m_prim_i, r_hm, t_hc);
+      dyn *the_binary_i = root_i->get_oldest_daughter();
+      add_secondary(the_binary_i, m_sec_i/m_prim_i);
+      addstar(root_i, start_time, primary_type, z_i, 0, false, secondary_type);
+
+      double_star *ds_i = new_double_star(the_binary_i, sma_i, ecc_i, start_time,
+                                          i + n_init, bin_type);
+      ds_i->set_use_hdyn(false);
+      ds_i->get_primary()->set_identity(0);
+      ds_i->get_secondary()->set_identity(1);
+
+      // Evolve into a thread-local buffer; flush to shared file atomically.
+      std::ostringstream oss;
+      bool reached_end = evolve_binary(the_binary_i, start_time, end_time,
+          stop_at_merger_or_disruption, stop_at_remnant_formation, oss);
+
+#pragma omp critical(output)
+      {
+          outfile << oss.str();
+      }
+
+      if (!reached_end) {
+          the_binary_i->get_starbase()->set_star_story(NULL);
+          rmtree(the_binary_i, false);
+      }
+
+      delete the_binary_i;
+      delete root_i;
+    }
+
+    log_root->log_history(argc, argv);
+    log_root->log_comment(seedlog);
+    log_root->log_comment(paramlog);
+    if (verbose) log_root->print_log_story(cout);
     return 0;
 }
 

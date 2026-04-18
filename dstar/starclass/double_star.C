@@ -1585,8 +1585,8 @@ void double_star::tidal_instability() {
 	spiral_in(get_secondary(), get_primary());
     }
     else {
-      cerr << "Merger double_star::tidal_instability" << endl;
-      dump(cerr, false);
+      if (!suppress_output) cerr << "Merger double_star::tidal_instability" << endl;
+      if (!suppress_output) dump(cerr, false);
 
       // (GN+PimvO Jan 18 2013)
       // if primary is remnant, secondary should be consumer
@@ -1644,8 +1644,8 @@ void double_star::dynamic_mass_transfer() {
       }
     }
     else {
-      cerr << "Merger double_star::dynamic_mass_transfer" << endl;
-      dump(cerr, false);
+      if (!suppress_output) cerr << "Merger double_star::dynamic_mass_transfer" << endl;
+      if (!suppress_output) dump(cerr, false);
 
       // (GN+PimvO Jan 18 2013)
       // if primary is remnant, secondary should be consumer
@@ -1794,16 +1794,16 @@ void double_star::double_spiral_in() {
 	  real mlost_s = Starlab::min(mass_loss_fr*mtot_s, 0.99*menv_s);
 	  s->reduce_mass(mlost_s);
 
-	  cerr << "Merger double_star::double_spiral_in()"<<endl;
-	  dump(cerr, false);
+	  if (!suppress_output) cerr << "Merger double_star::double_spiral_in()"<<endl;
+	  if (!suppress_output) dump(cerr, false);
 
 	  merge_elements(p, s);
 
         }
         else {
 
-	  cerr << "Survival double_star::double_spiral_in()"<<endl;
-	  dump(cerr, false);
+	  if (!suppress_output) cerr << "Survival double_star::double_spiral_in()"<<endl;
+	  if (!suppress_output) dump(cerr, false);
 
 	  semi = post_ce_semi;
 	  p = p->reduce_mass(menv_p);
@@ -1897,8 +1897,8 @@ void double_star::spiral_in(star* larger,
               mass_lost = 0.99*menv_l;
            }
 
-	   cerr << "Merger double_star::spiral_in()"<<endl;
-	   dump(cerr, false);
+	   if (!suppress_output) cerr << "Merger double_star::spiral_in()"<<endl;
+	   if (!suppress_output) dump(cerr, false);
 
 	   //           larger->set_core_mass(mcl_old);
 	   //           larger->set_envelope_mass(mel_old);
@@ -1960,8 +1960,8 @@ void double_star::merge_elements(star* consumer,
   }
 
 //  dump("binev.data", false);
-cerr << "Merger is: "<<endl;
-  dump(cerr, false);
+  if (!suppress_output) cerr << "Merger is: "<<endl;
+  if (!suppress_output) dump(cerr, false);
   if (!suppress_output) dump("SeBa.data", true);
 
   //get_seba_counters()->mergers++;
@@ -2012,8 +2012,8 @@ void double_star::magnetic_stellar_wind(const real dt) {
 
     if (semi_new<=0) {
 
-      cerr << "Merger::magnetic_stellar_wind"<<endl;
-      dump(cerr, false);
+      if (!suppress_output) cerr << "Merger::magnetic_stellar_wind"<<endl;
+      if (!suppress_output) dump(cerr, false);
 
       if (get_primary()->get_effective_radius() >
 	  get_secondary()->get_effective_radius())
@@ -2046,10 +2046,13 @@ cerr << "magnetic stellar wind => ::dynamics_mas_transfer" << endl;
 //	Peters. P.C., 1964, {\em Phys. Rev.}, {\bf 136}, 1224.
 real double_star::de_dt_gwr(const real e) {
 
-    real de_dt = (-305/15)*e*(1 + (121/304)*e*e)/pow(1-e*e, 2.5);
+    real beta = 1 - e*e;
+    real beta2 = beta*beta;
+    real semi2 = semi*semi;
+    real de_dt = (-305/15)*e*(1 + (121/304)*e*e)/(beta2*sqrt(beta));
     de_dt *= get_primary()->get_total_mass()
            * get_secondary()->get_total_mass()
-           *  get_total_mass()/pow(semi, 4.);
+           *  get_total_mass()/(semi2*semi2);
 
         return de_dt;
 }
@@ -2058,10 +2061,13 @@ real double_star::de_dt_gwr(const real e) {
 //	Peters P.C., 1964, Phys. Ref., 136, 4B, B1224.
 void double_star::gravrad(const real dt) {
 
-     real G3M3_C5R4 = pow(cnsts.physics(G)
+     static const real G3M3_C5R4 = pow(cnsts.physics(G)
 		    * cnsts.parameters(solar_mass), 3.)
                     / (pow(cnsts.physics(C), 5.)
 		    * pow(cnsts.parameters(solar_radius), 4.));
+     static const real G3M3_C5 = pow(cnsts.physics(G)
+                          * cnsts.parameters(solar_mass), 3.)
+                        / pow(cnsts.physics(C), 5.);
 
 //	Only appicable to small separation.
      if(semi*sqrt(1-eccentricity*eccentricity)/sqrt(get_total_mass())<=6.) {
@@ -2071,18 +2077,17 @@ void double_star::gravrad(const real dt) {
 
         real a_new;
         if (e_new > 0 && eccentricity > 0) {
-           real c0 = (semi*(1-pow(eccentricity,2))/pow(eccentricity, 12./19.))
-                   / pow(1 + 121*pow(eccentricity, 2.)/304, 870./2299.);
+           real ecc2 = eccentricity*eccentricity;
+           real e_new2 = e_new*e_new;
+           real c0 = (semi*(1-ecc2)/pow(eccentricity, 12./19.))
+                   / pow(1 + 121*ecc2/304, 870./2299.);
 
-           a_new = (c0*pow(e_new, 12./19.)/(1-pow(e_new, 2.)))
-                 * pow(1 + 121*pow(e_new, 2.)/304, 870./2299.);
+           a_new = (c0*pow(e_new, 12./19.)/(1-e_new2))
+                 * pow(1 + 121*e_new2/304, 870./2299.);
         }
         else {
            e_new = 0; 		// Circularize
            semi *= (1-eccentricity*eccentricity);
-           real G3M3_C5 = pow(cnsts.physics(G)
-			      *cnsts.parameters(solar_mass), 3.)
-	                / pow(cnsts.physics(C), 5.);
            real c0 = G3M3_C5* 256
                    * get_primary()->get_total_mass()
                    * get_secondary()->get_total_mass()
@@ -2095,8 +2100,8 @@ void double_star::gravrad(const real dt) {
 
         if (a_new<=0) {
 
-	  cerr << "Merger::gravrad"<<endl;
-	  dump(cerr, false);
+	  if (!suppress_output) cerr << "Merger::gravrad"<<endl;
+	  if (!suppress_output) dump(cerr, false);
 
 	  if (get_primary()->get_total_mass() >
 	      get_secondary()->get_total_mass())
@@ -2300,8 +2305,8 @@ void double_star::angular_momentum_envelope_ejection(star* larger,
 
 	    //	    PRC(smaller->get_radius());PRC(rl_s);PRL(a_f);
 
-	    cerr << "Merger double_star::angular_momentum_envelope_ejection(star* larger, star* smaller)" << endl;
-	    dump(cerr, false);
+	    if (!suppress_output) cerr << "Merger double_star::angular_momentum_envelope_ejection(star* larger, star* smaller)" << endl;
+	    if (!suppress_output) dump(cerr, false);
 	    merge_elements(larger,smaller);
 	  }
 	  else {
@@ -2400,8 +2405,8 @@ void double_star::dynamic_mass_transfer(star* larger, star* smaller) {
 
 	    PRC(smaller->get_radius());PRC(rl_s);PRL(a_f);
 
-	    cerr << "Merger double_star::dynamic_mass_transfer" << endl;
-	    dump(cerr, false);
+	    if (!suppress_output) cerr << "Merger double_star::dynamic_mass_transfer" << endl;
+	    if (!suppress_output) dump(cerr, false);
 	    merge_elements(larger,smaller);
 	  }
 	  else {

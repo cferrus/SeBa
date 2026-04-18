@@ -92,8 +92,8 @@ real stellar_evolution_constants::super_nova_kick() {
 
   // selected kick distribution imparted to a newly formed neutron star
   // in a supernova.
-PRC(pk);
-  PRL(v_disp);
+//PRC(pk);
+  //PRL(v_disp);
     switch(pk) {
     case no_velocity_kick:              return 0;
              break;

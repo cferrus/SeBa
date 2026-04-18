@@ -873,7 +873,7 @@ real single_star::expansionB(const real m) {
 // Star is updated.
 star* single_star::merge_elements(star* str) {
 
-  cerr << "Merge element single star" << endl;
+  if (!suppress_output) cerr << "Merge element single star" << endl;
 
   star* merged_star = this;
 
@@ -950,8 +950,8 @@ star* single_star::merge_elements(star* str) {
       //evolve_element(current_time);
    }
 
-    cerr << "Merged star: "<<endl;
-    merged_star->dump(cerr, false);
+    if (!suppress_output) cerr << "Merged star: "<<endl;
+    if (!suppress_output) merged_star->dump(cerr, false);
 
     return merged_star;
 }
@@ -3127,7 +3127,7 @@ real single_star::update_core_and_envelope_mass(const real m_core) {
   real dm_core = m_core-core_mass;
   
   if (m_core > get_total_mass()){
-    cerr << "single_star::update_core_and_envelope_mass limits new core mass to total mass." << endl;
+    if (!suppress_output) cerr << "single_star::update_core_and_envelope_mass limits new core mass to total mass." << endl;
     real m_tot = get_total_mass();
     envelope_mass = 0;
     core_mass = m_tot;
@@ -3153,7 +3153,7 @@ real single_star::update_core_and_envelope_mass_TPAGB(const real m_core) {
     bool successful_update = false;
     
     if (m_core > get_total_mass()){
-        cerr << "single_star::update_core_and_envelope_mass limits new core mass to total mass." << endl;
+        if (!suppress_output) cerr << "single_star::update_core_and_envelope_mass limits new core mass to total mass." << endl;
         real m_tot = get_total_mass();
         envelope_mass = 0;
         core_mass = m_tot;
