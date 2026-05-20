@@ -93,8 +93,11 @@ Input file format: one binary per line as `a  e  M  m  z` (semi-major axis, ecce
 
 ### Key flags
 
+Run `./SeBa -h` for the full CLI reference including all distribution options and defaults.
+
 | Flag | Meaning |
 |------|---------|
+| `-h` | Print full help and exit |
 | `-I file` | Read initial conditions from file |
 | `-R` | Generate random initial conditions |
 | `-n N` | Number of binaries (random mode) |
@@ -103,6 +106,8 @@ Input file format: one binary per line as `a  e  M  m  z` (semi-major axis, ecce
 | `-s seed` | Fix random seed (required for reproducibility) |
 | `-z Z` | Metallicity (0.0001–0.03) |
 | `-O file` | Output filename (default: `SeBa.data`) |
+| `-D` | Stop at merger or disruption |
+| `-S` | Stop at first remnant formation |
 | `-V` | Verbose: print diagnostics to stderr/stdout |
 
 ### Verbose flag
@@ -336,6 +341,31 @@ All measured single-threaded on macOS, 67,045 binaries, `-I SeBa_input_T_12550.t
 | Sys time  | ~14.4s | ~7.5s | ~1.0s | −93% |
 
 The sys-time drop is dominated by eliminating per-binary file I/O (opt 5) and the `ostringstream` buffering (opt 7).
+
+### Comparison against pre-optimisation baseline (commit `271c11d`)
+
+The "Original" column above was estimated incrementally. A direct measurement of commit `271c11d` (the state before all optimisations and before `bed0844`) against the current code on the same input confirms the gains are real:
+
+| | `271c11d` | Current | Δ |
+|-|-----------|---------|---|
+| User time | 290s | 228s | −21% |
+| Sys time  | 66s  | 1s   | −98% |
+| Real time | 365s | ~230s | −37% |
+
+The 66s → 1s sys-time collapse is the I/O suppression (opts 4 & 5): the old binary printed every phase transition and merger to stderr and opened/closed `SeBa.data` per binary, producing ~85 MB of terminal output for a single 67k-binary run.
+
+### New population benchmark (`New_Seba_12550.txt`)
+
+The production population (`Data/New_Seba_12550.txt`) contains 133,477 binaries — approximately 2× the benchmark set. Measured single-threaded on macOS, `-T 12550 -s 42`:
+
+| | Value |
+|-|-------|
+| User time | 1212s |
+| Sys time  | 7.9s  |
+| Real time | 1250s |
+| Per-binary | ~9.1ms |
+
+For comparison the benchmark population costs ~3.4ms per binary with the current code. The new population is ~2.7× more expensive per binary because it contains a higher fraction of mass-transferring systems, which trigger the smaller timesteps introduced by `bed0844` (thermal-timescale enforcement via `zeta_thermal = −10` when effective radius < Roche lobe radius). This is expected physics, not a code regression.
 
 ---
 
