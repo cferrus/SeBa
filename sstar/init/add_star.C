@@ -49,11 +49,11 @@
 //  addstar  -- for all particles, add a star part using "new star()".
 //-----------------------------------------------------------------------------
 
-void  addstar(node * b, real t_current, stellar_type type, real z,int id, 
-		bool verbose, stellar_type type2, real m_rel, real m_env, 
+void  addstar(node * b, real t_current, stellar_type type, real z,int id,
+		bool verbose, stellar_type type2, real m_rel, real m_env,
 		real m_core, real mco_core, real t_rel)
 
-{ 
+{
   //    if(!((star*)b->get_starbase())->get_seba_counters()) {
   //      cerr << "Initialize SeBa counters" << endl;
   //      ((star*)b->get_starbase())->set_seba_counters(new seba_counters);
@@ -64,25 +64,25 @@ void  addstar(node * b, real t_current, stellar_type type, real z,int id,
 	real m_av = 0;
 	int  n_star = 0;
 
-    bool first_encounter = true; 
-	for_all_daughters(node, b, bi) {        
+    bool first_encounter = true;
+	for_all_daughters(node, b, bi) {
         if (first_encounter){
     	    addstar(bi, t_current, type, z, id, verbose, type2);
     	    first_encounter = false;
         }
         else
             addstar(bi, t_current, type2, z, id, verbose, type2);
-            
+
 	    if (verbose) {
 		real m = bi->get_starbase()
 			   ->conv_m_dyn_to_star(bi->get_mass());
 		m_min = Starlab::min(m_min, m);
 		m_max = Starlab::max(m_max, m);
 		m_av += m;
-		n_star++;		
+		n_star++;
 	    }
 	}
-	if (verbose) {         
+	if (verbose) {
 	    if (n_star > 0) m_av /= n_star;
 	    //  PRC(n_star); PRC(m_min); PRC(m_max); PRL(m_av);
 	}
@@ -113,7 +113,6 @@ void  addstar(node * b, real t_current, stellar_type type, real z,int id,
 	// Jan 22025 code:
 	// stellar_type local_type = type;
 	// Febr 2025 code:
-	cout <<"stellar type in add_star:"<< type << endl;
 	stellar_type local_type = type;
 	if (type == Main_Sequence) {
 	  local_type = NAS;
@@ -148,7 +147,7 @@ void  addstar(node * b, real t_current, stellar_type type, real z,int id,
 
 	    //new_star->set_current_time(t_current); // added (SPZ:2/1998)
 	    //new_star->dump(cerr);
-	
+
 	} else {		// No star story present, or at least no
 	     			// proper definition for a single star.
 
@@ -181,29 +180,29 @@ void  addstar(node * b, real t_current, stellar_type type, real z,int id,
 	      m_core = 0.01*m_tot;
 	      mco_core = 0;
 	    }
-	    
+
 	    single_star* new_star;
         switch(local_type) {
             case Helium_Dwarf:
             case Carbon_Dwarf:
-            case Oxygen_Dwarf: 
+            case Oxygen_Dwarf:
             case Xray_Pulsar:
             case Radio_Pulsar:
-            case Neutron_Star: 
-            case Black_Hole:            
+            case Neutron_Star:
+            case Black_Hole:
                 new_star = new_single_star(local_type, id, z,
 						    t_cur, t_rel,
 						    m_rel, m_tot, m_tot, m_tot,
 						    p_rot, b_fld, b);
                 break;
-            default: 
+            default:
                 new_star = new_single_star(local_type, id, z,
 						    t_cur, t_rel,
 						    m_rel, m_tot, m_core, mco_core,
 						    p_rot, b_fld, b);
                 break;
-        }	    
-	    
+        }
+
 
 //	    single_star* new_star = new_single_star(local_type, id, z,
 //						    t_cur, t_rel,
@@ -419,7 +418,7 @@ main(int argc, char ** argv)
     }
 #endif
 
-    put_node(b);	
+    put_node(b);
     delete b;
 }
 
