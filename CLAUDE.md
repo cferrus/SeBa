@@ -16,7 +16,8 @@ This file documents the SeBa codebase as it lives in the `cferrus/SeBa` fork. It
 8. [Accuracy benchmark](#accuracy-benchmark)
 9. [Filtering output with rdc_SeBa](#filtering-output-with-rdc_seba)
 10. [Architecture](#architecture)
-11. [Known issues and caveats](#known-issues-and-caveats)
+11. [Upstream merge history](#upstream-merge-history)
+12. [Known issues and caveats](#known-issues-and-caveats)
 
 ---
 
@@ -493,6 +494,36 @@ Data/slurm_array.sh   SLURM job array template (if applicable)
 | `_OPENMP` | Defined by compiler when `-fopenmp` is active; guards OpenMP code in `SeBa.C` |
 
 Debug verbosity: flip the `#define REPORT_*` booleans near the top of `double_star.C` (`REPORT_BINARY_EVOLUTION`, `REPORT_RECURSIVE_EVOLUTION`, `REPORT_FUNCTION_NAMES`, `REPORT_TRANFER_STABILITY`) from `false` to `true` for a detailed trace.
+
+---
+
+## Upstream merge history
+
+This fork tracks `amusecode/SeBa` (upstream). Merges are done manually because our fork has significant divergence (output format, OpenMP, I/O suppression, performance optimisations). The upstream remote is not permanently configured; add it when needed:
+
+```bash
+git remote add upstream https://github.com/amusecode/SeBa.git
+git fetch upstream
+git merge upstream/main
+```
+
+### Merges performed
+
+#### 2026-05-29 — commit `3e4e190`
+
+Upstream commits merged:
+- `933bfbc` (Silvia Toonen, 2026-05-27): removed debug `cout` in `sstar/init/add_star.C`
+- `a07e70c` (2026-04-17): physics improvements from `amusecode/SeBa` — fixes to `super_giant.C`, `hertzsprung_gap.C`, `horizontal_branch.C`, `sub_giant.C`, `single_star.C`, `double_star.C`; build workflow additions
+
+**Conflict:** `sstar/init/add_star.C` — upstream deleted the `cout <<"stellar type in add_star:"<< type << endl;` debug statement; our branch had it commented out (opt 4). Resolved by taking upstream's deletion (cleaner).
+
+**All local optimisations survived:** OpenMP parallel loop, cached constants (`c_gwr`, `c_mb`, `G3M3_C5R4`, `G3M3_C5`), `cbrt()` in `roche_radius()`, `semi2`/`sma2` multiplications, output suppression, single `ofstream` open.
+
+**Accuracy impact:** upstream physics changes to `super_giant.C` et al. may shift the mismatch baseline from the current 88/67,045. Rerun the accuracy benchmark before relying on that number.
+
+#### 2026-04-17 — commit `d47d147`
+
+Upstream commit `af8654c`: fix forgotten `;` in `double_star.C`. This is the commit used to produce the reference file `/Users/melz/Work_Program/Data/12550_cleaned.data`.
 
 ---
 
