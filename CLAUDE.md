@@ -90,7 +90,7 @@ wc -l SeBa.data   # must be 2
 
 Input file format: one binary per line as `a  e  M  m  z` (semi-major axis, eccentricity, primary mass, secondary mass, metallicity).
 
-**Always use absolute paths for `-I`.** A relative path that cannot be opened causes a silent infinite loop in `read_binary_params`.
+**Always use absolute paths for `-I`.** A path that cannot be opened (wrong path, wrong extension, etc.) causes a silent infinite loop in `read_binary_params` — the process pegs a CPU core indefinitely with no error message. The input file in `Data/` uses a `.text` extension: `New_Seba_12550.text`.
 
 ### Key flags
 
@@ -311,7 +311,7 @@ Both `roche_radius()` overloads use `cbrt(mr)` instead of `pow(mr, 1.0/3.0)`, an
 
 ### 4. Suppressed cerr/cout I/O spam
 
-- ~67K `cout` writes in `sstar/init/add_star.C` commented out
+- Debug `cout` in `sstar/init/add_star.C` removed (deleted by upstream `933bfbc`)
 - Merger/spiral-in `cerr` in `double_star.C` gated on `!suppress_output`
 - `PRC(pk)` / `PRL(v_disp)` debug macros in `constants.C` commented out
 - All remaining unguarded `cerr` silenced by redirecting to `/dev/null` in `main()`
@@ -355,9 +355,9 @@ The "Original" column above was estimated incrementally. A direct measurement of
 
 The 66s → 1s sys-time collapse is the I/O suppression (opts 4 & 5): the old binary printed every phase transition and merger to stderr and opened/closed `SeBa.data` per binary, producing ~85 MB of terminal output for a single 67k-binary run.
 
-### New population benchmark (`New_Seba_12550.txt`)
+### New population benchmark (`New_Seba_12550.text`)
 
-The production population (`Data/New_Seba_12550.txt`) contains 133,477 binaries — approximately 2× the benchmark set. Measured single-threaded on macOS, `-T 12550 -s 42`:
+The production population (`Data/New_Seba_12550.text`) contains 133,477 binaries — approximately 2× the benchmark set. Measured single-threaded on macOS, `-T 12550 -s 42`:
 
 | | Value |
 |-|-------|
@@ -372,50 +372,49 @@ For comparison the benchmark population costs ~3.4ms per binary with the current
 
 ## Accuracy benchmark
 
-Any change to physics or output logic must be validated against the reference file before committing.
+Any change to physics or output logic must be validated before committing by comparing output against a known-good reference run.
 
 ### Reference file
 
-```
-/Users/melz/Work_Program/Data/12550_cleaned.data
-```
+The old 18-column reference (`12550_cleaned.data`) has been deleted. The current baseline uses our own 9-column output format, produced from `New_Seba_12550.text` at the current `main` HEAD.
 
-- 18-column original SeBa format (not our 9-column format)
-- 134,090 lines (2 per binary, 67,045 binaries)
-- Produced with commit `af8654c`, `-I SeBa_input_T_12550.txt -T 12550 -s 42`
-
-### Running the check
+To (re)generate the reference:
 
 ```bash
 cd dstar
-OMP_NUM_THREADS=1 ./SeBa -I /Users/melz/Work_Program/Data/SeBa_input_T_12550.txt -T 12550 -s 42
+OMP_NUM_THREADS=1 ./SeBa -I /Users/melz/Work_Program/Data/New_Seba_12550.text -T 12550 -s 42 -O /Users/melz/Work_Program/Data/reference.data
+```
+
+### Running the check
+
+After making changes, rebuild and run:
+
+```bash
+cd dstar
+OMP_NUM_THREADS=1 ./SeBa -I /Users/melz/Work_Program/Data/New_Seba_12550.text -T 12550 -s 42
 python3 -c "
 our, ref = {}, {}
 for line in open('SeBa.data'):
     c = line.split(); bid, t = c[0], float(c[2])
     our[(bid, 'T0' if t==0 else 'Tend')] = c
-for line in open('/Users/melz/Work_Program/Data/12550_cleaned.data'):
-    c = line.split(); bid, t = c[0], float(c[3])
+for line in open('/Users/melz/Work_Program/Data/reference.data'):
+    c = line.split(); bid, t = c[0], float(c[2])
     ref[(bid, 'T0' if t==0 else 'Tend')] = c
 mm = [(k[0], o, ref[k]) for k, o in our.items()
-      if k[1]=='Tend' and k in ref and
-      any([o[1]!=ref[k][1], o[3]!=ref[k][4], o[4]!=ref[k][5],
-           o[5]!=ref[k][7], o[6]!=ref[k][8], o[7]!=ref[k][13], o[8]!=ref[k][14]])]
+      if k[1]=='Tend' and k in ref and our[k] != ref[k]]
 print(f'Mismatches: {len(mm)} / {len(our)//2}')
 if mm:
     for bid, o, r in mm[:5]:
-        print(f'  {bid}: ours={o[1:][:8]}')
-        print(f'       ref ={[r[1],r[4],r[5],r[7],r[8],r[13],r[14]]}')
+        print(f'  {bid}: ours={o[1:]}')
+        print(f'       ref ={r[1:]}')
 "
 ```
 
-**`OMP_NUM_THREADS=1` is required** — the RNG is not thread-safe and produces different kick angles under OpenMP, making the count non-deterministic above 1 thread.
+**`OMP_NUM_THREADS=1` is required** — the RNG is not thread-safe and produces different kick angles under OpenMP, making results non-deterministic above 1 thread.
 
 ### Expected result
 
-**88 mismatches / 67,045 binaries (0.13%).**
-
-These are a known, stable divergence — small eccentricity differences in WD+Brown Dwarf and WD+companion systems caused by minor I/O code-path differences that shift the global RNG sequence. No `bin_type`, `s1_type`, or `s2_type` differences are expected. A count above 88, or any new type differences, indicates a regression.
+**0 mismatches** against the reference generated from the same codebase. Any mismatch indicates a physics or output regression.
 
 ---
 
@@ -519,7 +518,7 @@ Upstream commits merged:
 
 **All local optimisations survived:** OpenMP parallel loop, cached constants (`c_gwr`, `c_mb`, `G3M3_C5R4`, `G3M3_C5`), `cbrt()` in `roche_radius()`, `semi2`/`sma2` multiplications, output suppression, single `ofstream` open.
 
-**Accuracy impact:** upstream physics changes to `super_giant.C` et al. may shift the mismatch baseline from the current 88/67,045. Rerun the accuracy benchmark before relying on that number.
+**Accuracy impact:** validated 2026-05-29 — pre- vs post-merge comparison on `New_Seba_12550.text` (19,024 binaries, `-s 42`) gave **0 mismatches**. The upstream physics changes produce identical output on this population.
 
 #### 2026-04-17 — commit `d47d147`
 
